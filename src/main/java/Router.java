@@ -1,6 +1,4 @@
 import Exceptions.PortException;
-import org.w3c.dom.Node;
-
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
@@ -9,17 +7,42 @@ import java.util.List;
 public class Router {
    //Global linkedList for this class that represents nodes with sockets in the chord network
     static List<SocketNode> sockNodes = new LinkedList<SocketNode>();
-
     //Token number counter
     private static int tokenNum = 0;
 
-    /*Below function is used to generate a unique token number for messages
-     */
+    /*Below function is used to generate a unique token
+    number for messages*/
     public static synchronized int getTocketNum(){
         int maxInt = Integer.MAX_VALUE;
         if(tokenNum>=maxInt) tokenNum=0;
         tokenNum++;
         return tokenNum;
+    }
+
+
+
+    /*The below function is used to print the current status
+      of the nodes (router) in the chord network.*/
+    public static void printRouter(){
+        for(SocketNode n: sockNodes){
+            n.printSocketNode();
+        }
+    }
+
+
+
+    /* The below function is used to remove or terminate a node.
+       The function will receive the port number of the node that needs
+       to be deleted from the network as a parameter.*/
+    public static void terminate(int portNum){
+        SocketNode terminatedNode = null; //temporary holder
+        for (SocketNode n: sockNodes){
+            if (n.getPort() == portNum){ //if the portNumber of a node is equal to received portNumber, proceed to delete it
+                n.terminate();
+                terminatedNode= n;
+            }
+        }
+        sockNodes.remove(terminatedNode);
     }
 
 
@@ -50,33 +73,51 @@ public class Router {
     }
 
 
+
+    /*This below function will be used to send a reply whenever a msg
+      might be received.
+      The function will receive the port number of the sender and the
+      msg that needs to be delivered as parameters */
+    public static void sendAnswer(int portNum, Message msg){
+        boolean doneDelivery = false;
+        if (msg.getDestination().getHash().equals(msg.getSender().getHash())){
+            doneDelivery = true;
+            Chord.deliverMessage(msg.getDestination().getPort(),msg);
+        }
+        if (doneDelivery==false){
+            for (SocketNode n: sockNodes){
+                if (n.getPort() == portNum){
+                    n.sendMessage(msg);
+                }
+            }
+        }
+    }
+
+
+
     /*This below function will send the message it receives into the network
     and will return a token number which uniquely identifies the message and
-    associated reply
+    associated reply.
+    The function will receive the port number of the sender and the msg 
+    to be delivered as parameters.
      */
-    public static int sendMessage(int portNum, Message message) {
-        int token = getTocketNum();
+    public static int sendMessage(int portNum, Message msg) {
         boolean doneDelivery = false;
-        message.setId(token);
+        int token = getTocketNum();
+        msg.setId(token);
         //if destination hash is equal to sender hash, delivery is done
-        if (message.getDestination().getHash().equals(message.getSender().getHash())){
+        if (msg.getDestination().getHash().equals(msg.getSender().getHash())){
             doneDelivery = true;
-            Chord.deliverMessage(message.getDestination().getPort(),message);
+            Chord.deliverMessage(msg.getDestination().getPort(),msg);
         }
         if (doneDelivery==false){
             for (SocketNode n1: sockNodes){
                 if (n1.getPort() == portNum){
-                    n1.sendMessage(message);
+                    n1.sendMessage(msg);
                 }
             }
         }
         return token;
     }
-
-
-    
-
-
-
 
 }
