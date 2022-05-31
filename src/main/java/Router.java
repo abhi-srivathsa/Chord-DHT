@@ -1,4 +1,3 @@
-import Exceptions.PortException;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
@@ -6,7 +5,7 @@ import java.util.List;
 //This class is primarily responsible to forward and transport messages across the network.
 public class Router {
    //Global linkedList for this class that represents nodes with sockets in the chord network
-    static List<SocketNode> sockNodes = new LinkedList<SocketNode>();
+    static List<SockNode> sockNodes = new LinkedList<SockNode>();
     //Token number counter
     private static int tokenNum = 0;
 
@@ -24,7 +23,7 @@ public class Router {
     /*The below function is used to print the current status
       of the nodes (router) in the chord network.*/
     public static void printRouter(){
-        for(SocketNode n: sockNodes){
+        for(SockNode n: sockNodes){
             n.printSocketNode();
         }
     }
@@ -35,8 +34,8 @@ public class Router {
        The function will receive the port number of the node that needs
        to be deleted from the network as a parameter.*/
     public static void terminate(int portNum){
-        SocketNode terminatedNode = null; //temporary holder
-        for (SocketNode n: sockNodes){
+        SockNode terminatedNode = null; //temporary holder
+        for (SockNode n: sockNodes){
             if (n.getPort() == portNum){ //if the portNumber of a node is equal to received portNumber, proceed to delete it
                 n.terminate();
                 terminatedNode= n;
@@ -49,21 +48,21 @@ public class Router {
 
     /*Below function is called when a new n1 joins the network or is created and a socket Node with end points
       needs to be generated for it */
-    public static void addnode(int portNum) throws PortException {
+    public static void addnode(int portNum) throws PortNumException {
         synchronized (sockNodes){
-            SocketNode n1; //a new node n1
+            SockNode n1; //a new node n1
             try{
-                n1 = new SocketNode(portNum);
+                n1 = new SockNode(portNum);
                 sockNodes.add(n1); //adding new node to list of nodes
                 Threads.executeImmediately(n1); //executing it as runnable thread
                 n1.initialize(); //checks active connections of the node and initializes
             }catch (IOException error){
                 try{
-                    n1 = new SocketNode(0); //port zero is a wilcard port, asks system to find own port number
+                    n1 = new SockNode(0); //port zero is a wilcard port, asks system to find own port number
                     sockNodes.add(n1);
                     Threads.executeImmediately(n1);
                     n1.initialize();
-                    throw new PortException(n1.getPort());
+                    throw new PortNumException(n1.getPort());
                 }catch (IOException e){
 
                 }
@@ -80,12 +79,12 @@ public class Router {
       msg that needs to be delivered as parameters */
     public static void sendAnswer(int portNum, Message msg){
         boolean doneDelivery = false;
-        if (msg.getDestination().getHash().equals(msg.getSender().getHash())){
+        if (msg.getDest().getHash().equals(msg.getSource().getHash())){
             doneDelivery = true;
-            Chord.deliverMessage(msg.getDestination().getPort(),msg);
+            Chord.deliverMessage(msg.getDest().getPort(),msg);
         }
         if (doneDelivery==false){
-            for (SocketNode n: sockNodes){
+            for (SockNode n: sockNodes){
                 if (n.getPort() == portNum){
                     n.sendMessage(msg);
                 }
@@ -106,12 +105,12 @@ public class Router {
         int token = getTocketNum();
         msg.setId(token);
         //if destination hash is equal to sender hash, delivery is done
-        if (msg.getDestination().getHash().equals(msg.getSender().getHash())){
+        if (msg.getDest().getHash().equals(msg.getSource().getHash())){
             doneDelivery = true;
-            Chord.deliverMessage(msg.getDestination().getPort(),msg);
+            Chord.deliverMessage(msg.getDest().getPort(),msg);
         }
         if (doneDelivery==false){
-            for (SocketNode n1: sockNodes){
+            for (SockNode n1: sockNodes){
                 if (n1.getPort() == portNum){
                     n1.sendMessage(msg);
                 }
